@@ -1,0 +1,249 @@
+<html>
+  <head>
+    <style>
+      pre.rust { background-color: rgb(220,220,220) }
+      pre.output { background-color: rgb(220,255,220) }
+      pre.error { background-color: rgb(255,220,220) }
+    </style>
+  </head>
+
+  <body>
+
+<p>Here is some code for representing a <code>Point</code>: a two-dimensional
+cartesian coordinate <a href="http://is.gd/SqMvnj">(playpen link)</a>:</p>
+
+<pre class="rust">
+#![allow(unstable)]
+use std::fmt;
+struct Point {
+    x: i32,
+    y: i32,
+    name: String,
+}
+
+impl fmt::String for Point {
+    fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
+        write!(w, "{}@({}, {})", self.name, self.x, self.y)
+    }
+}
+
+fn main() {
+    let upper_left  = Point { x: 13, y: 14, name: format!("UL"), };
+    let lower_right = Point { x: 23, y: 74, name: format!("LR"), };
+
+    println!(" upper_left: {}", upper_left);
+    println!("lower_right: {}", lower_right);
+}
+</pre>
+
+This prints:
+<pre class="output">
+ upper_left: UL@(13, 14)
+lower_right: LR@(23, 74)
+</pre>
+
+<hr></hr>
+
+<p>If we wanted to modify (or "mutate") the point values we have
+created, we would add some assignment statements to change the field
+values.  However, we would hit a problem
+<a href="http://is.gd/wvzFhq">(playpen link)</a>:</p>
+
+<pre class="rust">
+fn main() {
+    let upper_left  = Point { x: 13, y: 14, name: format!("UL"), };
+    let lower_right = Point { x: 23, y: 74, name: format!("LR"), };
+
+    println!(" upper_left init: {}", upper_left);
+    println!("lower_right init: {}", lower_right);
+
+    upper_left.x = 12;
+    lower_right.y = 84;
+
+    println!(" upper_left post: {}", upper_left);
+    println!("lower_right post: {}", lower_right);
+}
+</pre>
+
+<pre class="error">
+&lt;anon&gt;:21:5: 21:22 error: cannot assign to immutable field `upper_left.x`
+&lt;anon&gt;:21     upper_left.x = 12;
+              ^~~~~~~~~~~~~~~~~
+&lt;anon&gt;:22:5: 22:23 error: cannot assign to immutable field `lower_right.y`
+&lt;anon&gt;:22     lower_right.y = 84;
+              ^~~~~~~~~~~~~~~~~~
+error: aborting due to 2 previous errors
+</pre>
+
+In Rust, bindings like <code>upper_left</code> are immutable by default.
+To make it mutable, we use the <code>mut</code> keyword, like so
+<a href="http://is.gd/gG76Bk">(playpen link)</a>:
+
+<pre class="rust">
+fn main() {
+    let mut upper_left  = Point { x: 13, y: 14, name: format!("UL"), };
+    let mut lower_right = Point { x: 23, y: 74, name: format!("LR"), };
+
+    println!(" upper_left init: {}", upper_left);
+    println!("lower_right init: {}", lower_right);
+
+    upper_left.x = 12;
+    lower_right.y = 84;
+
+    println!(" upper_left post: {}", upper_left);
+    println!("lower_right post: {}", lower_right);
+}
+</pre>
+
+<hr></hr>
+
+Alternatively, we can add a function that
+manipulates <code>Point</code> values in a functional style: consuming
+an input (<code>p</code> here) and producing an output:
+
+<pre class="rust">
+fn double_x(p: Point) -> Point {
+    Point { x: p.x * 2, ..p }
+}
+</pre>
+
+Here is our updated <code>main</code> that calls the new
+<code>fn double_x</code>
+<a href="http://is.gd/29lCSQ">(playpen link)</a>:
+
+<pre class="rust">
+fn main() {
+    let upper_left  = Point { x: 13, y: 14, name: format!("UL"), };
+    let lower_right = Point { x: 23, y: 74, name: format!("LR"), };
+
+    println!("      upper_left init: {}", upper_left);
+    println!("     lower_right init: {}", lower_right);
+
+    let d_lr = double_x(lower_right);
+
+    println!("lower_right, double x: {}", d_lr);
+}
+</pre>
+
+<p>This prints:</p>
+<pre class="output">
+      upper_left init: UL@(13, 14)
+     lower_right init: LR@(23, 74)
+lower_right, double x: LR@(46, 74)
+</pre>
+
+<hr></hr>
+
+<p>We have now seen enough to demonstrate some interesting
+consequences of "move-semantics": what happens when you mix
+moving values around with imperative updates
+<a href="http://is.gd/3T0WLz">(playpen link)</a>:</p>
+
+<pre class="rust">
+fn main() {
+    let mut upper_left  = Point { x: 13, y: 14, name: format!("UL"), };
+    let mut lower_right = Point { x: 23, y: 74, name: format!("LR"), };
+
+    println!("      upper_left init: {}", upper_left);
+    println!("     lower_right init: {}", lower_right);
+
+    let d_lr = double_x(lower_right);
+
+    upper_left.x = 12;
+    lower_right.y = 84;
+
+    println!("lower_right, double x: {}", d_lr);
+    println!("      upper_left post: {}", upper_left);
+    println!("     lower_right post: {}", lower_right);
+}
+</pre>
+
+Again, we hit an error (even though we were careful in this case to
+add <code>mut</code> again to <code>upper_left</code>
+and <code>lower_right</code>:
+
+<pre class="error">
+&lt;anon&gt;:33:43: 33:54 error: use of moved value: `lower_right`
+&lt;anon&gt;:33     println!("     lower_right post: {}", lower_right);
+                                                    ^~~~~~~~~~~
+note: in expansion of format_args!
+&lt;std macros&gt;:2:42: 2:75 note: expansion site
+&lt;std macros&gt;:1:1: 2:77 note: in expansion of println!
+&lt;anon&gt;:33:5: 33:56 note: expansion site
+&lt;anon&gt;:26:25: 26:36 note: `lower_right` moved here because it has type `Point`, which is non-copyable
+&lt;anon&gt;:26     let d_lr = double_x(lower_right);
+                                  ^~~~~~~~~~~
+error: aborting due to previous error
+</pre>
+
+<p>Discuss.</p>
+
+<hr></hr>
+
+One way to deal with problems like this is to make values <em>copyable</em>.
+One does this via the built-in <code>Copy</code> trait, to mark a type as
+producing values that are not owned, and thus are copied rather than moved
+when assigned or passed as parameters.
+
+This seems really easy:
+<pre class="rust">
+impl Copy for Point { }
+</pre>
+
+But then when we try to do that, we hit a new
+error <a href="http://is.gd/zgqV1n">(playpen link)</a>:
+
+<pre class="error"</pre>
+&lt;anon&gt;:9:1: 9:24 error: the trait `Copy` may not be implemented for this type; field `name` does not implement `Copy`
+&lt;anon&gt;:9 impl Copy for Point { }
+         ^~~~~~~~~~~~~~~~~~~~~~~
+error: aborting due to previous error
+</pre>
+
+The field <code>name</code> has type <code>String</code>, and
+the <code>String</code> type is noncopyable: it owns an underlying allocated
+buffer of characters. But for making things like labels on points, we might
+not need such generality. Perhaps a reference to some static data embedded
+in the program binary would suffice, like so:
+
+<pre class="rust">
+struct Point {
+    x: i32,
+    y: i32,
+    name: &'static str,
+}
+</pre>
+
+<p>We have to also update our <code>main</code> function that builds the example
+points, since their type has changed to <code>&amp;'static str</code>
+<a href="http://is.gd/0UZTgM">(playpen link)</a>:</p>
+<pre class="rust">
+    let upper_left  = Point { x: 13, y: 14, name: "UL", };
+    let lower_right = Point { x: 23, y: 74, name: "LR", };
+</pre>
+
+<hr></hr>
+
+<p>One might ask: "But what if I want to pass owned data into a function
+  call <em>without</em> moving it?"</p>
+
+<p>Up above, I glossed over the role
+of <code>&amp;</code> in code snippets like the <code>impl fmt::String</code>
+or the new definition of <code>struct Point</code>
+with its <code>&amp;'static str</code>.</p>
+
+<p>Using these <em>references</em>, you can <em>borrow</em> access to
+  owned data without moving it.<p>
+
+<p>
+  One can divide types in Rust into three kinds:
+  <ul>
+    <li><code>T</code>: non-reference data of type <code>T</code>.  Examples: <code>String</code>, <code>i32</code></li>
+    <li><code>&amp; T</code>: shared reference to some type <code>T</code></li>
+    <li><code>&amp;mut T</code>: a <em>unique</em> (unshared) mutable reference to some type <code>T</code></li>
+</p>
+
+<p>Make some examples.</p>
+
+  </body>
+</html>
